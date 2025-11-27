@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>PPE Webcam Detection</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      margin-bottom: 8px;
+    }
+    .row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1 1 320px;
+    }
+    video, img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 2px solid #444;
+    }
+    #controls {
+      margin: 12px 0;
+    }
+    button {
+      padding: 8px 14px;
+      margin-right: 8px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #start-btn { background:#007bff; color:white; }
+    #stop-btn { background:#e0e0e0; }
+    #status {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    #alert-box {
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-top: 10px;
+      background-color: #ffe6e6;
+      color: #c00;
+      border: 2px solid #c00;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>PPE Webcam Detection</h1>
+  <p>웹캠 영상에서 프레임을 캡처해서 YOLO 모델로 실시간 PPE 감지를 수행합니다.</p>
+
+  <div id="controls">
+    <button id="start-btn">▶ 시작</button>
+    <button id="stop-btn">⏹ 정지</button>
+    <span id="status">대기 중...</span>
+  </div>
+
+  <div id="alert-box"></div>
+
+  <div class="row">
+    <div class="column">
+      <h3>웹캠 원본</h3>
+      <video id="live-video" autoplay playsinline></video>
+    </div>
+    <div class="column">
+      <h3>YOLO 결과</h3>
+      <img id="result-image" src="" alt="감지 결과" />
+    </div>
+  </div>
+
+  <!-- 캔버스는 프레임 캡처용이라 숨김 -->
+  <canvas id="capture-canvas" style="display:none;"></canvas>
+
+  <script>
+    const video = document.getElementById('live-video');
+    const canvas = document.getElementById('capture-canvas');
+    const resultImg = document.getElementById('result-image');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const statusSpan = document.getElementById('status');
+    const alertBox = document.getElementById('alert-box');
+
+    const warningClasses = ["NO-Mask", "NO-Hardhat", "NO-Safety Vest"];
+
+    let stream = null;
+    let running = false;   // 현재 추론 루프 돌고 있는지 여부
+
+    // 웹캠 켜기
+    async function startCamera() {
+      if (stream) return;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = stream;
+        statusSpan.textContent = "웹캠 연결 완료.";
+      } catch (err) {
+        console.error(err);
+        statusSpan.textContent = "웹캠 연결 실패: " + err.message;
+      }
+    }
+
+    // 웹캠 끄기
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+        video.srcObject = null;
+      }
+    }
+
+    // 한 프레임을 서버로 보내 YOLO 추론
+    async function sendFrame() {
+      if (!running || !stream) return;
+
+      // 비디오가 준비됐는지 확인
+      if (video.readyState < 2) {
+        // 아직 준비 안 됐으면 조금 있다가 다시 시도
+        setTimeout(sendFrame, 200);
+        return;
+      }
+
+      const origW = video.videoWidth;
+      const origH = video.videoHeight;
+      if (!origW || !origH) {
+        setTimeout(sendFrame, 200);
+        return;
+      }
+
+      // 목표 너비 640 (원하면 480, 320까지도 가능)
+      const targetW = 640;
+      const scale = targetW / origW;
+      const targetH = Math.round(origH * scale);
+
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, targetW, targetH);
+
+
+      // 캔버스를 Blob(JPEG)으로 변환
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setTimeout(sendFrame, 200);
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', blob, 'frame.jpg');
+
+        try {
+          const t0 = performance.now();
+          const response = await fetch('http://127.0.0.1:8000/predict', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await response.json();
+          const t1 = performance.now();
+
+          // 결과 이미지 업데이트
+          if (data.image_base64) {
+            resultImg.src = 'data:image/jpeg;base64,' + data.image_base64;
+          }
+
+          // 위험 클래스 체크해서 경고 박스 표시
+          const danger = data.detections?.some(det =>
+            warningClasses.includes(det.class_name)
+          );
+
+          if (danger) {
+            alertBox.style.display = 'block';
+            alertBox.textContent = "⚠ 실시간 PPE 위반 감지!";
+          } else {
+            alertBox.style.display = 'none';
+          }
+
+          statusSpan.textContent =
+            `감지 객체: ${data.num_detections ?? data.detections?.length ?? 0}개, ` +
+            `추론 시간: ${(t1 - t0).toFixed(0)} ms`;
+
+        } catch (err) {
+          console.error(err);
+          statusSpan.textContent = "요청 오류: " + err.message;
+        } finally {
+          // 약간 딜레이 후 다음 프레임 (FPS 조절: 0.2초 = ~5FPS)
+          if (running) {
+            setTimeout(sendFrame, 200);
+          }
+        }
+      }, 'image/jpeg', 0.8);
+    }
+
+    // 시작 버튼
+    startBtn.addEventListener('click', async () => {
+      await startCamera();
+      running = true;
+      statusSpan.textContent = "실시간 감지 시작...";
+      sendFrame();
+    });
+
+    // 정지 버튼
+    stopBtn.addEventListener('click', () => {
+      running = false;
+      statusSpan.textContent = "정지됨.";
+      alertBox.style.display = 'none';
+    });
+
+    // 페이지 떠날 때 카메라 정리
+    window.addEventListener('beforeunload', () => {
+      stopCamera();
+    });
+  </script>
+</body>
+</html>

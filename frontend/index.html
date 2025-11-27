@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>PPE Detection Web App</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+    h1 {
+      margin-bottom: 8px;
+    }
+    .upload-box {
+      border: 2px dashed #aaa;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    #preview {
+      max-width: 100%;
+      margin-top: 12px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    #result-image {
+      max-width: 100%;
+      margin-top: 16px;
+      border-radius: 8px;
+      border: 2px solid #444;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      font-size: 14px;
+      text-align: center;
+    }
+    th {
+      background: #f5f5f5;
+    }
+    .warning {
+      background-color: #ffe6e6;
+      color: #c00;
+      font-weight: bold;
+    }
+
+    /* 🔥 A-1 경고 배너 */
+    #alert-box {
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      margin-top: 16px;
+      background-color: #ffe6e6;
+      color: #c00;
+      border: 2px solid #c00;
+      display: none;
+    }
+
+    /* 🔥 A-4 요약 박스 */
+    #summary-box {
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>PPE Detection Web App</h1>
+  <p>이미지를 업로드하면 YOLO 모델이 PPE 착용 여부를 분석해줍니다.</p>
+
+  <div class="upload-box">
+    <input type="file" id="file-input" accept="image/*" />
+    <p>이미지를 선택한 후 자동으로 서버에 전송됩니다.</p>
+    <img id="preview" src="" alt="" style="display:none;" />
+  </div>
+
+  <div id="status"></div>
+
+  <!-- 🔥 경고 박스 -->
+  <div id="alert-box"></div>
+
+  <!-- 🔥 요약 박스 -->
+  <div id="summary-box"></div>
+
+  <h2>Detection Result</h2>
+  <img id="result-image" src="" alt="감지 결과 이미지" style="display:none;" />
+
+  <table id="result-table" style="display:none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Class</th>
+        <th>Confidence</th>
+        <th>경고 여부</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const previewImg = document.getElementById('preview');
+    const resultImg = document.getElementById('result-image');
+    const resultTable = document.getElementById('result-table');
+    const resultTbody = resultTable.querySelector('tbody');
+    const statusDiv = document.getElementById('status');
+    const alertBox = document.getElementById('alert-box');
+    const summaryBox = document.getElementById('summary-box');
+
+    const warningClasses = ["NO-Mask", "NO-Hardhat", "NO-Safety Vest"];
+
+    function isWarningClass(className) {
+      return warningClasses.includes(className);
+    }
+
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // 미리보기
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        previewImg.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+
+      resultImg.style.display = 'none';
+      resultTable.style.display = 'none';
+      alertBox.style.display = 'none';
+      summaryBox.style.display = 'none';
+
+      statusDiv.textContent = "서버에 이미지를 전송 중입니다...";
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/predict', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        statusDiv.textContent = `총 ${data.num_detections}개의 객체가 감지되었습니다.`;
+
+        // 결과 이미지
+        if (data.image_base64) {
+          resultImg.src = 'data:image/jpeg;base64,' + data.image_base64;
+          resultImg.style.display = 'block';
+        }
+
+        // 테이블
+        resultTbody.innerHTML = '';
+
+        let warningCount = 0;
+        let warningList = [];
+
+        // 클래스 요약
+        const classSummary = {};
+
+        data.detections.forEach((det, idx) => {
+          const tr = document.createElement('tr');
+          const tdIdx = document.createElement('td');
+          const tdClass = document.createElement('td');
+          const tdConf = document.createElement('td');
+          const tdWarn = document.createElement('td');
+
+          tdIdx.textContent = idx + 1;
+          tdClass.textContent = det.class_name;
+          tdConf.textContent = det.confidence.toFixed(3);
+
+          // 경고 여부
+          if (isWarningClass(det.class_name)) {
+            tr.classList.add('warning');
+            tdWarn.textContent = "⚠ 경고";
+            warningCount++;
+            warningList.push(det.class_name);
+          } else {
+            tdWarn.textContent = "-";
+          }
+
+          // 요약
+          classSummary[det.class_name] =
+            (classSummary[det.class_name] || 0) + 1;
+
+          tr.appendChild(tdIdx);
+          tr.appendChild(tdClass);
+          tr.appendChild(tdConf);
+          tr.appendChild(tdWarn);
+
+          resultTbody.appendChild(tr);
+        });
+
+        resultTable.style.display = 'table';
+
+        // 🔥 경고 배너
+        if (warningCount > 0) {
+          alertBox.style.display = 'block';
+          const summary = warningList
+            .reduce((acc, cls) => {
+              acc[cls] = (acc[cls] || 0) + 1;
+              return acc;
+            }, {});
+          const text = Object.entries(summary)
+            .map(([cls, cnt]) => `${cls} ${cnt}건`)
+            .join(", ");
+          alertBox.textContent = `⚠ PPE 위반 감지: ${text}`;
+        }
+
+        // 🔥 요약 박스
+        summaryBox.style.display = 'block';
+        summaryBox.innerHTML =
+          "<b>클래스 요약:</b><br>" +
+          Object.entries(classSummary)
+            .map(([cls, cnt]) => `${cls}: ${cnt}`)
+            .join("<br>");
+
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = "요청 중 오류가 발생했습니다.";
+      }
+    });
+  </script>
+</body>
+</html>
