@@ -127,8 +127,9 @@ python local/webcam_ppe.py
 
 ## 📎 7. Model Download
 
-[👉 Download best.pt](https://huggingface.co/Hansung-Cho/yolov8-ppe-detection/resolve/main/best.pt)
+You can access the model here:
 
+👉 **[Hugging Face: YOLOv8 PPE Detection](https://huggingface.co/Hansung-Cho/yolov8-ppe-detection)**
 ---
 
 ## 🛠️ 8. Tech Stack
