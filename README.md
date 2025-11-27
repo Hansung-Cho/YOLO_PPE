@@ -28,6 +28,10 @@ Google Colab 모델 학습 → FastAPI 서버 → 웹 프론트엔드 UI →
 - `webcam_ppe.py` → 로컬 웹캠 감지
 - 위험 클래스 감지 시 **알림(Warning UI)**
 
+### ✔️ Docker Deployment Support
+- FastAPI 기반 YOLOv8 추론 서버를 Docker로 컨테이너화
+- 환경 충돌 없이 어디서나 실행 가능한 재현성 높은 배포 환경 제공
+
 ---
 
 ## 📁 2. Project Structure
@@ -42,7 +46,8 @@ YOLO_PPE/
 │
 ├── frontend/
 │ ├── index.html # Image upload PPE detection UI
-│ └── webcam.html # Real-time webcam detection UI
+│ ├── webcam.html # Real-time webcam detection UI
+| └── screenshots/
 │
 ├── local/
 │ └── webcam_ppe.py # Local Python webcam detection
@@ -51,11 +56,6 @@ YOLO_PPE/
 │ ├── custom_colab.yaml # Dataset yaml
 │ ├── YOLO_PPE.ipynb # Full training / evaluation notebook
 │ └── screenshots/
-│  ├── results.png
-│  ├── confusion_matrix.png
-│  ├── BoxPR_curve.png
-│  ├── BoxF1_curve.png
-│  └── example.png
 │
 └── README.md
 ```
@@ -91,9 +91,19 @@ YOLO_PPE/
 
 ---
 
-## 🌐 5. How to Run
+## 🖥 5. Web UI – Screenshots
 
-### 5-1) Backend Server (FastAPI)
+### Image Upload Detection
+<img src="frontend/screenshots/ui_upload.png" width="500">
+
+### Real-time Webcam Detection
+<img src="frontend/screenshots/ui_webcam.png" width="500">
+
+---
+
+## 🌐 6. How to Run
+
+### 6-1) Backend Server (FastAPI)
 
 ```bash
 cd backend
@@ -101,12 +111,12 @@ pip install -r requirements.txt
 uvicorn app:app --reload
 ```
 
-### 5-2) Web Frontend 실행
+### 6-2) Web Frontend 실행
 - `frontend/index.html` → 이미지 업로드 감지
 - `frontend/webcam.html` → 실시간 웹캠 감지  
 브라우저에서 파일을 직접 열어도 실행됩니다.
 
-### 5-3) Local Webcam Detection
+### 6-3) Local Webcam Detection
 
 ```bash
 python local/webcam_ppe.py
@@ -114,7 +124,7 @@ python local/webcam_ppe.py
 
 ---
 
-## ⭐ 6. Key Features
+## ⭐ 7. Key Features
 - YOLOv8 기반 PPE 전용 객체 탐지
 - NO-Mask, NO-Hardhat 등 위험 요소 자동 경고
 - 이미지 업로드/실시간 웹캠 감지 지원
@@ -124,14 +134,14 @@ python local/webcam_ppe.py
 
 ---
 
-## 📎 7. Model Download
+## 📎 8. Model Download
 
 You can access the model here:
 
 👉 **[Hugging Face: YOLOv8 PPE Detection](https://huggingface.co/Hansung-Cho/yolov8-ppe-detection)**
 ---
 
-## 🛠️ 8. Tech Stack
+## 🛠️ 9. Tech Stack
 - YOLOv8 (Ultralytics)
 - PyTorch
 - Google Colab
@@ -142,14 +152,14 @@ You can access the model here:
 
 ---
 
-## 📘 9. Notebook (Training Log)
+## 📘 10. Notebook (Training Log)
 Colab 학습 로그는 아래 노트북에 기록되어 있습니다:
 
 `training/YOLO_PPE.ipynb`
 
 ---
 
-## 🎯 10. What I Learned
+## 🎯 11. What I Learned
 - YOLOv8 fine-tuning 전체 pipeline 이해
 - Validation 성능 해석 (mAP/Precision/Recall)
 - 실시간 웹 비전 시스템 구축
@@ -158,7 +168,7 @@ Colab 학습 로그는 아래 노트북에 기록되어 있습니다:
 
 ---
 
-## 🐳 11. Docker Deployment
+## 🐳 12. Docker Deployment
 
 본 프로젝트는 FastAPI 기반 YOLOv8 PPE Detection 서버를  
 **Docker로 컨테이너화하여 환경 충돌 없이 바로 실행**할 수 있도록 구성했습니다.  
@@ -186,7 +196,7 @@ docker run -d -p 8000:8000 --name ppe-server hansungcho/ppe-fastapi
 
 ---
 
-## 📦 12. Docker 기반 배포 지원
+## 📦 13. Docker 기반 배포 지원
 
 Docker를 이용해 AI 추론 서버를 컨테이너화함으로써 다음과 같은 이점을 얻었습니다:
 
@@ -201,5 +211,5 @@ Docker를 이용해 AI 추론 서버를 컨테이너화함으로써 다음과 �
 
 ---
 
-## 🙌 13. Contact
+## 🙌 14. Contact
 문의: whgkstjd04@snu.ac.kr
