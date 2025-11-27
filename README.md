@@ -86,9 +86,6 @@ YOLO_PPE/
 ### F1 Curve  
 <img src="training/screenshots/BoxF1_curve.png" width="500">
 
-### Prediction Example  
-<img src="training/screenshots/example.png" width="500">
-
 ---
 
 ## 🖥 5. Web UI – Screenshots
