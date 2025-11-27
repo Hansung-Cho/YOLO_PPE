@@ -93,7 +93,7 @@ YOLO_PPE/
 
 ## 🌐 5. How to Run
 
-### 1-1) Backend Server (FastAPI)
+### 5-1) Backend Server (FastAPI)
 
 ```bash
 cd backend
@@ -101,17 +101,16 @@ pip install -r requirements.txt
 uvicorn app:app --reload
 ```
 
-### 1-2) Web Frontend 실행
+### 5-2) Web Frontend 실행
 - `frontend/index.html` → 이미지 업로드 감지
 - `frontend/webcam.html` → 실시간 웹캠 감지  
 브라우저에서 파일을 직접 열어도 실행됩니다.
 
-### 2) Local Webcam Detection
+### 5-3) Local Webcam Detection
 
 ```bash
 python local/webcam_ppe.py
 ```
-
 
 ---
 
@@ -159,5 +158,48 @@ Colab 학습 로그는 아래 노트북에 기록되어 있습니다:
 
 ---
 
-## 🙌 11. Contact
+## 🐳 11. Docker Deployment
+
+본 프로젝트는 FastAPI 기반 YOLOv8 PPE Detection 서버를  
+**Docker로 컨테이너화하여 환경 충돌 없이 바로 실행**할 수 있도록 구성했습니다.  
+Docker 이미지를 이용하면 어떤 환경에서도 동일한 설정으로 손쉽게 재현할 수 있습니다.
+
+---
+
+### 🚀 1) Pull the Docker Image
+
+```bash
+docker pull hansungcho/ppe-fastapi:latest
+```
+---
+
+### 🚀 2) Run the Container
+
+```bash
+docker run -d -p 8000:8000 --name ppe-server hansungcho/ppe-fastapi
+```
+
+서버 실행 후 API는 아래에서 확인할 수 있습니다:
+
+- Swagger UI → http://localhost:8000/docs
+- Predict Endpoint → http://localhost:8000/predict
+
+---
+
+## 📦 12. Docker 기반 배포 지원
+
+Docker를 이용해 AI 추론 서버를 컨테이너화함으로써 다음과 같은 이점을 얻었습니다:
+
+- OS에 관계없이 동일한 환경
+- 패키지 버전 충돌 및 의존성 문제 해결
+- 빠른 재현성 확보
+- 클라우드·온프레미스 환경 모두에서 배포 가능
+- FastAPI + YOLOv8 환경을 그대로 독립 실행 가능
+
+이번 프로젝트에서는 Dockerfile 구성부터 이미지 빌드, 배포 테스트까지 수행하여  
+엔드투엔드 AI 시스템의 배포 가능한 형태를 완성했습니다.
+
+---
+
+## 🙌 13. Contact
 문의: whgkstjd04@snu.ac.kr

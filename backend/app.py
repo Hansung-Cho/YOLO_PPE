@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
+from pathlib import Path
 import numpy as np
 import cv2
 import base64
@@ -18,7 +19,10 @@ app.add_middleware(
 )
 
 # 서버 시작할 때 한 번만 모델 로드
-model = YOLO("best.pt")  # best.pt 경로 맞게 수정
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model" / "best.pt"
+
+model = YOLO(str(MODEL_PATH))
 
 @app.get("/")
 def root():
